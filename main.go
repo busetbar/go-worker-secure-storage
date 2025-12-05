@@ -224,7 +224,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 					nonce := make([]byte, aead.NonceSize())
 					if _, errRand := rand.Read(nonce); errRand != nil {
-						log.Printf("[ENCRYPT] rand error: %v", errRand)
+						log.Printf("[ENCRYPT] Finished encrypt loop for %s", filename)
 						return
 					}
 
@@ -322,6 +322,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		"original_size": originalSize,
 		"message":       "uploaded",
 	})
+
 }
 
 /* ======================================================
@@ -428,6 +429,11 @@ func IntegrityHandler(w http.ResponseWriter, r *http.Request) {
 
 	hashFinal := fmt.Sprintf("%x", hasher.Sum(nil))
 	elapsed := time.Since(start)
+		log.Printf("[INTEGRITY] DONE %s — decrypted + hashed %.2f MB in %d ms",
+		path,
+		float64(hashCount)/1024/1024,
+		elapsed.Milliseconds(),
+	)
 
 	log.Printf("[INTEGRITY] Completed in %d ms", elapsed.Milliseconds())
 
@@ -565,8 +571,12 @@ func DownloadDecryptedHandler(w http.ResponseWriter, r *http.Request) {
 	flateR := flate.NewReader(pr)
 	defer flateR.Close()
 
-	if _, err := io.Copy(w, flateR); err != nil {
+	bytesWritten, err := io.Copy(w, flateR)
+
+	if err != nil {
 		log.Printf("[DOWNLOAD-DECRYPT] Stream error: %v", err)
+	} else {
+		log.Printf("[DOWNLOAD-DECRYPT] Completed, sent %.2f MB", float64(bytesWritten)/1024/1024)
 	}
 }
 
